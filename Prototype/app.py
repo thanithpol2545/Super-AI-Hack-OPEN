@@ -3,6 +3,7 @@ import io
 import os
 import pathlib
 import sys
+import urllib.request
 from pathlib import Path
 
 import pandas as pd
@@ -690,9 +691,44 @@ T = UI[LANG]
 
 @st.cache_resource(show_spinner=False)
 def load_model(model_path: Path):
-    if not model_path.exists():
-        raise FileNotFoundError(f"{UI['th']['missing_model']}: {model_path}")
-    return load_learner(model_path)
+    """Load model from local path or download from GitHub Releases if not found."""
+    
+    # Try local path first
+    if model_path.exists():
+        return load_learner(model_path)
+    
+    # If not found locally, download from GitHub Releases
+    model_filename = model_path.name
+    model_cache_dir = Path.home() / ".streamlit_model_cache"
+    model_cache_dir.mkdir(parents=True, exist_ok=True)
+    
+    cached_model_path = model_cache_dir / model_filename
+    
+    if cached_model_path.exists():
+        return load_learner(cached_model_path)
+    
+    # Download from GitHub Releases
+    try:
+        st.info("⏳ Downloading model (~110MB)... This may take a minute.")
+        
+        github_release_url = "https://github.com/thanithpol2545/Super-AI-Hack-OPEN/releases/download/v1.0/convnextv2_thev1_best_for_good.pkl"
+        
+        def download_progress_hook(block_num, block_size, total_size):
+            if total_size > 0:
+                downloaded = block_num * block_size
+                percent = min(100, int(100 * downloaded / total_size))
+                if percent % 10 == 0 and percent > 0:
+                    st.write(f"Downloaded: {percent}%")
+        
+        urllib.request.urlretrieve(github_release_url, cached_model_path, download_progress_hook)
+        st.success("✅ Model downloaded successfully!")
+        
+        return load_learner(cached_model_path)
+    
+    except Exception as e:
+        error_msg = f"Failed to load model: {str(e)}\nPlease ensure the model file exists or check your internet connection."
+        st.error(error_msg)
+        raise FileNotFoundError(error_msg)
 
 
 def class_text(class_name: str):
