@@ -2,3 +2,5 @@
 __pycache__/
 *.pyc
 Prototype/*.log
+*.pkl
+.streamlit_model_cache/
